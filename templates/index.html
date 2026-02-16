@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Chat - Assistant IA</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .chat-container {
+            height: 70vh;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #007bff;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .assistant-message {
+            background-color: white;
+            border: 1px solid #ddd;
+            line-height: 1.6;
+        }
+        .assistant-message p {
+            margin-bottom: 15px;
+            margin-top: 0;
+        }
+        .assistant-message p:last-child {
+            margin-bottom: 0;
+        }
+        .download-link {
+            color: #28a745;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 2px 6px;
+            background-color: #d4edda;
+            border-radius: 4px;
+            border: 1px solid #c3e6cb;
+        }
+        .download-link:hover {
+            color: #1e7e34;
+            background-color: #c3e6cb;
+            text-decoration: none;
+        }
+        .external-link {
+            color: #007bff;
+            text-decoration: none;
+        }
+        .external-link:hover {
+            text-decoration: underline;
+        }
+        .sources {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+            font-size: 0.9em;
+        }
+        .typing-indicator {
+            padding: 10px;
+            color: #6c757d;
+            font-style: italic;
+        }
+        .input-group {
+            margin-top: 15px;
+        }
+        #messageInput {
+            border-radius: 20px 0 0 20px;
+        }
+        #sendButton {
+            border-radius: 0 20px 20px 0;
+        }
+        .nav-pills .nav-link.active {
+            background-color: #007bff;
+        }
+        .relevance-score {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .score-header {
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .score-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .score-badge {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-size: 0.85em;
+            box-shadow: 0 2px 4px rgba(0,123,255,0.3);
+        }
+        .sources-count {
+            color: #6c757d;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+        .documents-list {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .documents-list h5 {
+            margin: 0 0 10px 0;
+            color: #495057;
+            font-size: 0.95em;
+            font-weight: bold;
+        }
+        .documents-list ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .documents-list li {
+            margin: 5px 0;
+        }
+        .documents-list a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .documents-list a:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+        
+        /* Styles pour le streaming */
+        .cursor {
+            animation: blink 1s infinite;
+            color: #007bff;
+            font-weight: bold;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        
+        .streaming-content {
+            display: inline;
+        }
+        
+        .form-check-label {
+            cursor: pointer;
+        }
+        
+        .form-check-label i {
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="#"><i class="fas fa-robot"></i> RAG Assistant</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/upload"><i class="fas fa-upload"></i> Upload Documents</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-comments"></i> Chat avec l'Assistant IA</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="chatContainer" class="chat-container">
+                            <div class="message assistant-message">
+                                <strong>Assistant:</strong> Bonjour ! Je suis votre assistant IA basé sur vos documents. 
+                                Posez-moi des questions sur les informations contenues dans vos fichiers uploadés.
+                            </div>
+                        </div>
+                        
+                        <!-- Toggle pour le mode streaming -->
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="streamingToggle" checked>
+                                <label class="form-check-label" for="streamingToggle">
+                                    <i class="fas fa-stream"></i> Mode streaming (réponse en temps réel)
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <input type="text" id="messageInput" class="form-control" 
+                                   placeholder="Tapez votre question ici..." 
+                                   onkeypress="handleKeyPress(event)">
+                            <button id="sendButton" class="btn btn-primary" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane"></i> Envoyer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h6><i class="fas fa-info-circle"></i> Informations</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <small>
+                                <strong>Comment ça marche :</strong><br>
+                                1. Uploadez vos documents<br>
+                                2. Posez des questions<br>
+                                3. L'IA cherche dans vos docs<br>
+                                4. Vous obtenez des réponses précises avec sources
+                            </small>
+                        </div>
+                        
+                        <div id="statsContainer">
+                            <h6>Statistiques</h6>
+                            <p><small id="documentsCount">Documents: Chargement...</small></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h6><i class="fas fa-history"></i> Historique récent</h6>
+                    </div>
+                    <div class="card-body">
+                        <div id="recentHistory">
+                            <p class="text-muted"><small>Aucune conversation récente</small></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let conversationHistory = [];
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const streamingToggle = document.getElementById('streamingToggle');
+            const message = messageInput.value.trim();
+            
+            if (!message) return;
+
+            // Ajouter le message de l'utilisateur
+            addMessage(message, 'user');
+            messageInput.value = '';
+
+            // Choisir entre streaming et mode normal
+            if (streamingToggle.checked) {
+                await sendMessageStreaming(message);
+            } else {
+                await sendMessageNormal(message);
+            }
+        }
+
+        async function sendMessageNormal(message) {
+            // Ajouter l'indicateur de frappe
+            const typingDiv = showTyping();
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: conversationHistory.slice(-10) // Garder les 10 derniers échanges
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                // Créer le conteneur de message streaming
+                typingDiv.remove();
+                const streamingMessageDiv = addStreamingMessage();
+                let fullResponse = '';
+                let sources = null;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.error) {
+                                    throw new Error(data.error);
+                                }
+                                
+                                if (data.chunk) {
+                                    fullResponse += data.chunk;
+                                    updateStreamingMessage(streamingMessageDiv, fullResponse);
+                                }
+                                
+                                if (data.done) {
+                                    sources = data.sources;
+                                    finalizeStreamingMessage(streamingMessageDiv, fullResponse, sources);
+                                    
+                                    // Mettre à jour l'historique
+                                    conversationHistory.push(
+                                        { role: 'user', content: message },
+                                        { role: 'assistant', content: fullResponse }
+                                    );
+                                    return;
+                                }
+                            } catch (parseError) {
+                                console.warn('Erreur de parsing SSE:', parseError);
+                            }
+                        }
+                    }
+                }
+
+            } catch (error) {
+                typingDiv.remove();
+                
+                if (error.message.includes('504')) {
+                    addMessage('🌐 Timeout du serveur: La requête a pris trop de temps à traiter. Veuillez réessayer.', 'assistant');
+                } else {
+                    addMessage('❌ Erreur de connexion: ' + error.message, 'assistant');
+                }
+                console.error('Erreur lors de l\'envoi du message:', error);
+            }
+        }
+
+        async function sendMessageStreaming(message) {
+            // Ajouter l'indicateur de frappe pour le streaming
+            const typingDiv = showTyping();
+            typingDiv.innerHTML = '<i class="fas fa-stream"></i> <em>Génération en temps réel...</em>';
+
+            try {
+                const response = await fetch('/api/chat/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        history: conversationHistory.slice(-10) // Garder les 10 derniers échanges
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                // Créer le conteneur de message streaming
+                typingDiv.remove();
+                const streamingMessageDiv = addStreamingMessage();
+                let fullResponse = '';
+                let sources = null;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.error) {
+                                    throw new Error(data.error);
+                                }
+                                
+                                if (data.chunk) {
+                                    fullResponse += data.chunk;
+                                    updateStreamingMessage(streamingMessageDiv, fullResponse);
+                                }
+                                
+                                if (data.done) {
+                                    sources = data.sources;
+                                    finalizeStreamingMessage(streamingMessageDiv, fullResponse, sources);
+                                    
+                                    // Mettre à jour l'historique
+                                    conversationHistory.push(
+                                        { role: 'user', content: message },
+                                        { role: 'assistant', content: fullResponse }
+                                    );
+                                    return;
+                                }
+                            } catch (parseError) {
+                                console.warn('Erreur de parsing SSE:', parseError);
+                            }
+                        }
+                    }
+                }
+                
+            } catch (error) {
+                typingDiv.remove();
+                
+                if (error.message.includes('504')) {
+                    addMessage('🌐 Timeout du serveur: La requête streaming a pris trop de temps à traiter. Veuillez réessayer.', 'assistant');
+                } else {
+                    addMessage('❌ Erreur de streaming: ' + error.message, 'assistant');
+                }
+                console.error('Erreur lors du streaming:', error);
+            }
+        }
+
+        function addMessage(content, sender, sources = null) {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            
+            if (sender === 'user') {
+                messageDiv.className = 'message user-message';
+                messageDiv.innerHTML = `<strong>Vous:</strong> ${content}`;
+            } else {
+                messageDiv.className = 'message assistant-message';
+                let html = `<strong>Assistant:</strong> ${formatMessage(content)}`;
+                
+                if (sources && sources.length > 0) {
+                    html += '<div class="sources">';
+                    html += '<strong><i class="fas fa-book"></i> Sources:</strong><br>';
+                    sources.forEach((source, index) => {
+                        html += `<small>${index + 1}. ${source.file_name} (Score: ${source.score.toFixed(2)})</small><br>`;
+                    });
+                    html += '</div>';
+                }
+                
+                messageDiv.innerHTML = html;
+            }
+            
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function formatMessage(content) {
+            // D'abord, convertir les liens Markdown en HTML
+            // Pour les liens de téléchargement (/api/files/.../decrypt), utiliser l'attribut download avec le nom du fichier
+            let formatted = content.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, text, url) {
+                if (url.includes('/api/files/') && url.includes('/decrypt')) {
+                    // Utiliser le texte du lien comme nom de fichier pour l'attribut download
+                    return `<a href="${url}" download="${text}" class="download-link">${text}</a>`;
+                } else {
+                    return `<a href="${url}" target="_blank" class="external-link">${text}</a>`;
+                }
+            });
+            
+            // Traiter spécialement la section d'évaluation de la réponse (format markdown)
+            formatted = formatted.replace(
+                /---\s*[\r\n]+###\s*📊\s*Évaluation\s*de\s*la\s*réponse\s*[\r\n]+\*\*Note\s*de\s*pertinence\*\*\s*:\s*(\d+)\/10\s*[\r\n]+\*\*Sources\s*consultées\*\*\s*:\s*(\d+)\s*document\(s?\)/gi,
+                '<div class="relevance-score">' +
+                '<div class="score-header">📊 Évaluation de la réponse</div>' +
+                '<div class="score-content">' +
+                '<span class="score-badge">Note: $1/10</span>' +
+                '<span class="sources-count">Sources: $2 document(s)</span>' +
+                '</div>' +
+                '</div>'
+            );
+            
+            // Traiter la section Documents consultés
+            formatted = formatted.replace(
+                /###\s*📄\s*Documents\s*consultés\s*[\r\n]+((?:[\r\n]*-\s*\[[^\]]+\]\([^)]+\))*)/gi,
+                function(match, documentsList) {
+                    let processedList = documentsList
+                        .replace(/^[\r\n]+/, '') // Supprimer les retours à la ligne au début
+                        .replace(/[\r\n]+$/, '') // Supprimer les retours à la ligne à la fin
+                        .replace(/[\r\n]*-\s*/g, '<li>') // Remplacer les tirets par des éléments de liste
+                        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" download="$1">$1</a>'); // Convertir les liens markdown
+                    
+                    return '<div class="documents-list">' +
+                           '<h5>📄 Documents consultés</h5>' +
+                           '<ul>' + processedList + '</ul>' +
+                           '</div>';
+                }
+            );
+            
+            // Convertir les titres markdown en HTML
+            formatted = formatted.replace(/###\s*([^\n\r]+)/g, '<h5>$1</h5>');
+            formatted = formatted.replace(/##\s*([^\n\r]+)/g, '<h4>$1</h4>');
+            formatted = formatted.replace(/#\s*([^\n\r]+)/g, '<h3>$1</h3>');
+            
+            // Convertir le texte en gras markdown (**texte**)
+            formatted = formatted.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            
+            // Convertir le texte en italique markdown (*texte*)
+            formatted = formatted.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            
+            // Améliorer le formatage du texte
+            formatted = formatted
+                // Convertir les doubles retours à la ligne en paragraphes
+                .replace(/\n\n+/g, '</p><p>')
+                // Convertir les retours à la ligne simples en <br>
+                .replace(/\n/g, '<br>')
+                // Formater les listes numérotées avec plus d'espacement
+                .replace(/(<br>)?(\d+\.\s)/g, '<br><br><strong>$2</strong>')
+                // Formater les tirets de liste
+                .replace(/(<br>)?(-\s)/g, '<br>&nbsp;&nbsp;• ')
+                // Ajouter de l'espacement après les deux-points
+                .replace(/:\s*<br>/g, ':<br><br>')
+                // Nettoyer les <br> multiples consécutifs
+                .replace(/(<br>\s*){3,}/g, '<br><br>');
+            
+            // Encapsuler dans des paragraphes si nécessaire
+            if (formatted && !formatted.startsWith('<p>') && !formatted.startsWith('<div class="relevance-score">')) {
+                formatted = '<p>' + formatted + '</p>';
+            }
+            
+            return formatted;
+        }
+
+        function addStreamingMessage() {
+            const chatContainer = document.getElementById('chatContainer');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message assistant-message';
+            messageDiv.innerHTML = '<strong>Assistant:</strong> <span class="streaming-content"></span><span class="cursor">|</span>';
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return messageDiv;
+        }
+
+        function updateStreamingMessage(messageDiv, content) {
+            const streamingContent = messageDiv.querySelector('.streaming-content');
+            if (streamingContent) {
+                // Formater le contenu en temps réel
+                streamingContent.innerHTML = formatMessage(content);
+            }
+            
+            // Maintenir le scroll en bas
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function finalizeStreamingMessage(messageDiv, fullContent, sources) {
+            const cursor = messageDiv.querySelector('.cursor');
+            if (cursor) {
+                cursor.remove(); // Supprimer le curseur clignotant
+            }
+            
+            // Appliquer le formatage final complet
+            let html = '<strong>Assistant:</strong> ' + formatMessage(fullContent);
+            
+            // Ajouter les sources si disponibles
+            if (sources && sources.length > 0) {
+                html += '<div class="mt-2"><small><strong>Sources:</strong><br>';
+                sources.forEach((source, index) => {
+                    html += `<small>${index + 1}. ${source.file_name} (Score: ${source.score.toFixed(2)})</small><br>`;
+                });
+                html += '</div>';
+            }
+            
+            messageDiv.innerHTML = html;
+            
+            // Scroll final
+            const chatContainer = document.getElementById('chatContainer');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function showTyping() {
+            const chatContainer = document.getElementById('chatContainer');
+            const typingDiv = document.createElement('div');
+            typingDiv.className = 'typing-indicator';
+            typingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> L\'assistant réfléchit...';
+            chatContainer.appendChild(typingDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            return typingDiv;
+        }
+
+        // Charger les statistiques
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/files');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('documentsCount').textContent = 
+                        `Documents: ${data.files.length}`;
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des stats:', error);
+            }
+        }
+
+        // Charger les statistiques au démarrage
+        loadStats();
+    </script>
+</body>
+</html>

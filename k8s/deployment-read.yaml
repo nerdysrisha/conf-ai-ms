@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: di-extraction-ai-document-intelligence-layout
+    app.kubernetes.io/instance: di-extraction
+    app.kubernetes.io/name: ai-document-intelligence
+  name: di-extraction-ai-document-intelligence-layout
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: di-extraction-ai-document-intelligence-layout
+  template:
+    metadata:
+
+      labels:
+        app.kubernetes.io/component: di-extraction-ai-document-intelligence-layout
+        app.kubernetes.io/instance: di-extraction
+        app.kubernetes.io/name: ai-document-intelligence
+    spec:
+      containers:
+      - env:
+        - name: apikey
+          valueFrom:
+            secretKeyRef:
+              name: docintel-secret
+              key: apikey
+        - name: billing
+          value: https://docintelconfidentialai.cognitiveservices.azure.com/
+        - name: eula
+          value: accept
+        - name: SharedRootFolder
+          value: /share
+        - name: Mounts__Shared
+          value: /share
+        - name: Mounts__Output
+          value: /logs
+        - name: Logging__Console__LogLevel__Default
+          value: Information
+        image: mcr.microsoft.com/azure-cognitive-services/form-recognizer/layout-4.0:latest
+        imagePullPolicy: Always
+        name: di-extraction-ai-document-intelligence-layout
+        ports:
+        - containerPort: 5000
+          protocol: TCP
+        resources:
+          limits:
+            cpu: "8"
+            memory: 32Gi
+          requests:
+            cpu: "8"
+            memory: 32Gi
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /share
+          name: shared
+        - mountPath: /logs
+          name: output
+      volumes:
+      - name: shared
+        persistentVolumeClaim:
+          claimName: di-extraction-ai-document-intelligence-shared
+      - name: output
+        persistentVolumeClaim:
+          claimName: di-extraction-ai-document-intelligence-output
+      nodeSelector:
+        agentpool: cvmnp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/component: di-extraction-ai-document-intelligence-layout
+    app.kubernetes.io/instance: di-extraction
+    app.kubernetes.io/name: ai-document-intelligence
+  name: di-extraction-ai-document-intelligence-layout
+spec:
+  ports:
+  - name: http
+    port: 80
+    protocol: TCP
+    targetPort: 5000
+  selector:
+    app.kubernetes.io/component: di-extraction-ai-document-intelligence-layout
+  type: ClusterIP

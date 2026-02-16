@@ -1,0 +1,90 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nomic-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ollama-nomic
+      model: nomic
+  template:
+    metadata:
+      labels:
+        app: ollama-nomic
+        model: nomic
+    spec:
+      containers:
+      - name: ollama
+        image: ollama/ollama:latest
+        lifecycle:
+          postStart:
+            exec:
+              command:
+              - ollama
+              - pull
+              - nomic-embed-text:latest # Update to the ollama model which is required
+        ports:
+        - containerPort: 11434  # Default Ollama API port
+          name: api
+        env:
+        - name: DEFAULT_MODEL
+          value: "nomic-embed-text:latest"
+        - name: OLLAMA_HOST
+          value: "0.0.0.0"  # Listen on all interfaces
+        - name: OLLAMA_ORIGINS
+          value: "*"  # Allow cross-origin requests  
+        - name: OLLAMA_NUM_THREADS
+          value: "8"
+        - name: OLLAMA_KEEP_ALIVE
+          value: "-1"
+        - name: OLLAMA_NUM_BATCH
+          value: "384"
+        - name: OLLAMA_NUM_CTX
+          value: "4096"
+        - name: OLLAMA_NUM_NMAP
+          value: "0"
+        - name: OLLAMA_NUM_PARALLEL
+          value: "6"
+        resources:
+          requests:
+            memory: "32Gi"
+            cpu: "8"
+          limits:
+            memory: "32Gi"
+            cpu: "8"
+        volumeMounts:
+        - name: ollama-data
+          mountPath: /root/.ollama  # Model storage location
+        livenessProbe:
+          httpGet:
+            path: /api/tags  # Health check endpoint
+            port: 11434
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/tags
+            port: 11434
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: ollama-data
+        persistentVolumeClaim:
+          claimName: ollama-nomic-pvc
+      nodeSelector:
+        agentpool: cvmnp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nomic-svc
+spec:
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 11434
+  selector:
+    app: ollama-nomic
+

@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "East US"
+    },
+    "resourcePrefix": {
+      "value": "confidentialai"
+    },
+    "vnetAddressSpace": {
+      "value": "10.0.0.0/8"
+    },
+    "vmSubnetPrefix": {
+      "value": "10.0.1.0/24"
+    },
+    "aksSubnetPrefix": {
+      "value": "10.0.2.0/24"
+    },
+    "peSubnetPrefix": {
+      "value": "10.0.3.0/24"
+    },
+    "bastionSubnetPrefix": {
+      "value": "10.0.4.0/24"
+    },
+    "adminUsername": {
+      "value": "azureuser"
+    },
+    "authenticationType": {
+      "value": "password"
+    },
+    "adminPasswordOrKey": {
+      "value": "YourSecurePassword123!"
+    },
+    "aksSystemNodeVmSize": {
+      "value": "Standard_DC2as_v5"
+    },
+    "aksUserNodeVmSize": {
+      "value": "Standard_DC16as_v5"
+    },
+    "aksSystemNodeCount": {
+      "value": 3
+    },
+    "aksUserNodeCount": {
+      "value": 2
+    },
+    "aksSystemNodeDiskSize": {
+      "value": 128
+    },
+    "aksUserNodeDiskSize": {
+      "value": 256
+    },
+    "vmSize": {
+      "value": "Standard_NCC40ads_H100_v5"
+    }
+  }
+}

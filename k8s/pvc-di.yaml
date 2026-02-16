@@ -1,0 +1,47 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: sc-di-fileshare
+provisioner: file.csi.azure.com
+parameters:
+  skuName: Standard_LRS
+reclaimPolicy: Delete
+mountOptions:
+  - dir_mode=0777
+  - file_mode=0777
+  - uid=0
+  - gid=0
+  - mfsymlinks
+  - nobrl
+  - actimeo=30
+  - nosharesock
+  - cache=strict
+  - actimeo=30
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+---
+# ollama-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: di-extraction-ai-document-intelligence-shared
+spec:
+  accessModes:
+    - ReadWriteMany  # Multiple pods can access simultaneously
+  resources:
+    requests:
+      storage: 200Gi  # Adjust based on model sizes
+  storageClassName: sc-di-fileshare
+---
+# ollama-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: di-extraction-ai-document-intelligence-output
+spec:
+  accessModes:
+    - ReadWriteMany  # Multiple pods can access simultaneously
+  resources:
+    requests:
+      storage: 200Gi  # Adjust based on model sizes
+  storageClassName: sc-di-fileshare
